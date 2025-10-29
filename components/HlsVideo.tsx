@@ -36,7 +36,7 @@ function HlsVideo({ src, muted, loop, isPlaying }: { src: string; muted: boolean
   return (
     <video
       ref={videoRef}
-      className="w-full h-full object-cover"
+      className="w-full h-full object-contain bg-black"
       muted={muted}
       loop={loop}
       playsInline
