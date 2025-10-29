@@ -42,7 +42,7 @@ export default function Home() {
     async function load() {
       const resFetch = await fetch("/api/posts", { method: "POST", body: JSON.stringify({ "Sa": "AS" }) });
       const { posts } = await resFetch.json()
-      
+
       setPostsRef(posts)
     }
 
@@ -189,7 +189,7 @@ export default function Home() {
               {/* Mute/Unmute Button */}
               <button
                 onClick={toggleMute}
-                className="absolute top-4 right-4 bg-black/50 p-2 rounded-full hover:bg-black/70 transition z-10"
+                className="absolute top-4.5 right-4 bg-black/50 p-2 rounded-full hover:bg-black/70 transition z-10"
               >
                 {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
               </button>
@@ -210,7 +210,7 @@ export default function Home() {
               </div>
 
               {/* Action Buttons */}
-              <div className="absolute right-4 bottom-20 flex flex-col items-center space-y-6 z-10">
+              <div className="absolute right-4 bottom-20 flex flex-col items-center space-y-4 z-10 pb-20">
                 <div className="flex flex-col items-center">
                   <button
                     onClick={() => setIsLiked(!isLiked)}
@@ -246,17 +246,13 @@ export default function Home() {
                   </button>
                   <span className="text-xs mt-1 font-semibold">{post.share_count}</span>
                 </div>
-
-                <div className="w-12 h-12 rounded-full bg-gray-700 overflow-hidden mt-4 ring-2 ring-white ring-offset-2 ring-offset-black">
-                  <img src={post.user.photo_url ?? ""} alt="avatar" className="w-full h-full" />
-                </div>
               </div>
             </div>
           </div>
         ))}
 
         {/* Scroll Indicators - Fixed Position */}
-        <div className="fixed right-8 top-1/2 transform -translate-y-1/2 flex flex-col space-y-4 z-20">
+        <div className="hidden md:fixed md:right-8 md:top-1/2 md:transform md:-translate-y-1/2 md:flex md:flex-col md:space-y-4 md:z-20">
           <button
             onClick={() => navigateToVideo(currentVideoIndex - 1)}
             className={`w-10 h-10 rounded-full bg-black/50 flex items-center justify-center transition-all duration-300 ${currentVideoIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/70 hover:scale-110'
@@ -269,7 +265,7 @@ export default function Home() {
           </button>
 
           {/* Page Indicators */}
-          <div className="flex flex-col items-center space-y-2">
+          {/* <div className="flex flex-col items-center space-y-2">
             {postsRef.map((_, index) => (
               <button
                 key={index}
@@ -281,7 +277,7 @@ export default function Home() {
                   }`}
               />
             ))}
-          </div>
+          </div> */}
 
           <button
             onClick={() => navigateToVideo(currentVideoIndex + 1)}
@@ -297,13 +293,13 @@ export default function Home() {
       </div>
 
       {/* Top Right Menu */}
-      <div className="fixed top-4 right-4 flex items-center space-x-4 rounded-full px-4 py-2 z-30">
+      <div className="fixed top-4.5 left-1/2 transform -translate-x-1/2 flex items-center space-x-4 rounded-full px-4 py-2 z-30 md:top-4 md:right-4 md:left-auto md:transform-none">
         <button className="flex items-center space-x-2 hover:text-gray-300 transition">
           <Download className="w-5 h-5" />
           <span className="text-sm">Download APP</span>
         </button>
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500"></div>
       </div>
+
     </div>
   );
 }

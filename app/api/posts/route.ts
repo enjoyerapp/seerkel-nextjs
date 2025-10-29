@@ -1,50 +1,52 @@
-export const dynamic = 'force-static';
-import { db } from "@/firebaseAdmin"; // use admin SDK
+import { algoliaClient } from "@/algoliaClient";
 import { Post } from "@/models/post";
+
+export const dynamic = 'force-static';
 
 
 export async function POST(request: Request) {
-    const { } = await request.json();
-
     try {
-        // 1️⃣ Get latest 20 posts
-        const postsSnap = await db
-            .collection("posts")
-            .orderBy("created_at", "desc")
-            .limit(20)
-            .get();
+        const { hits: postHits } = await algoliaClient.searchSingleIndex({
+            indexName: "prod_POSTS_by_popularity", searchParams: {
+                hitsPerPage: 20,
+                attributesToRetrieve: ["id", "description", "location", "like_count", "comment_count", "save_count", "share_count", "user_id"]
+            }
+        })
 
-        const posts: Post[] = postsSnap.docs.map((doc, index) => ({
-            id: doc.id,
-            ...doc.data(),
-            isMuted: true,
-            isPlaying: index == 0,
-        } as Post));
+        const userIds = [...new Set(postHits.map((p) => (p as unknown as Post).user_id).filter(Boolean))];
 
-        // 2️⃣ Get unique user IDs
-        const userIds = [...new Set(posts.map(p => p.user_id).filter(Boolean))];
 
-        // 3️⃣ Get all users (Admin SDK allows querying with array of IDs safely)
-        const usersSnap = await db
-            .collection("users")
-            .where("__name__", "in", userIds)
-            .get();
+        const { results: userResults } = await algoliaClient.getObjects({
+            requests: userIds.map(id => {
+                return {
+                    indexName: "prod_USERS",
+                    objectID: id,
+                    attributesToRetrieve: ["id", "username", "name", "photo_url"]
+                }
+            })
+        })
 
+        // 6️⃣ Map users to dictionary for quick lookup
         const users: Record<string, any> = {};
-        usersSnap.forEach(doc => {
-            users[doc.id] = { id: doc.id, ...doc.data() };
+        userResults?.forEach((u: any) => {
+            if (u) users[u.id] = {
+                id: u.id,
+                username: u.username,
+                name: u.name,
+                photo_url: u.photo_url,
+            };
         });
 
-        // 4️⃣ Merge user data into posts
-        const postsWithUsers = posts.map(post => ({
+        const postsWithUsers = postHits.map((post, index) => ({
             ...post,
-            user: users[post.user_id] || null,
+            isMuted: false,
+            isPlaying: index == 0,
+            user: users[(post as unknown as Post).user_id] || null,
         }));
 
-        // 5️⃣ Return
         return Response.json({ posts: postsWithUsers });
-    } catch (error) {
-        console.error(error);
-        return Response.json({ error: "Failed to fetch posts" }, { status: 500 });
+    } catch (error: any) {
+        console.error("Algolia fetch failed:", error);
+        return Response.json({ error: "Failed to fetch from Algolia" }, { status: 500 });
     }
 }
