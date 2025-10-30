@@ -16,17 +16,23 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showEmailForm, setShowEmailForm] = useState(false);
-    const searchParams = useSearchParams()
-    const code = searchParams.get('code')
     const { setUid } = useUid()
+    const [hasCode, setHasCode] = useState<boolean | null>(null);
 
     useEffect(() => {
         async function login() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get("code");
+            if (!code) {
+                setHasCode(false)
+                return
+            }
+            setHasCode(true)
             const res = await fetch("/api/login", {
                 method: "POST",
                 body: JSON.stringify({ googleCode: code })
             })
-            const {uid } = await res.json()
+            const { uid } = await res.json()
             setUid(uid)
             if (res.ok) {
                 redirect("/")
@@ -34,7 +40,7 @@ export default function LoginPage() {
         }
 
         login()
-    }, [code])
+    }, [])
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,7 +82,7 @@ export default function LoginPage() {
                         <p className="text-white/90 text-sm">New generation social media</p>
                     </div>
 
-                    {code ? <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4 mt-4"></div> : !showEmailForm ? (
+                    {(hasCode == null || hasCode) ? <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4 mt-4"></div> : !showEmailForm ? (
                         <div className="p-8 space-y-4">
                             <h2 className="text-xl font-semibold text-white text-center mb-6">
                                 Login or Signup
@@ -227,7 +233,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Skip Login - Go to Homepage */}
-                {!code && <div className="text-center mt-6">
+                {!hasCode && <div className="text-center mt-6">
                     <Link
                         href="/"
                         className="inline-flex items-center space-x-2 text-gray-400 hover:text-white font-medium transition group"
