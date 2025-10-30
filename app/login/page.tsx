@@ -48,9 +48,10 @@ export default function LoginPage() {
     };
 
     const handleGoogleLogin = () => {
+        const combined = `${window.location.protocol}//${window.location.hostname}`;
         const params = new URLSearchParams({
             client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-            redirect_uri: `http://localhost:3000/login`,
+            redirect_uri: `${combined}/login`,
             response_type: "code",
             scope: "openid email profile",
             access_type: "offline",

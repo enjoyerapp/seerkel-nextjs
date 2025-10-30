@@ -9,7 +9,9 @@ export async function POST(request: Request) {
     if (!googleCode) {
         return Response.json({ message: "Error" }, { status: 400 })
     }
-
+    
+    const url = new URL(request.url);
+    const combined = `${url.protocol}//${url.hostname}`;
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
             code: googleCode,
             client_id: process.env.GOOGLE_CLIENT_ID!,
             client_secret: process.env.GOOGLE_CLIENT_SECRET!, // keep on server
-            redirect_uri: "http://localhost:3000/login",
+            redirect_uri: `${combined}/login`,
             grant_type: "authorization_code",
         }),
     });
