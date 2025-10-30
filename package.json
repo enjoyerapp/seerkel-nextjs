@@ -12,10 +12,12 @@
     "algoliasearch": "^5.41.0",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
+    "google-auth-library": "^10.4.2",
     "hls.js": "^1.6.13",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.548.0",
     "next": "16.0.0",
-    "npm": "^11.6.2",
+    "npm": "^11.6.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

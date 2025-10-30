@@ -8,12 +8,16 @@ import {
     Search,
     User,
     Menu,
-    X
+    X,
+    LogOut
 } from 'lucide-react';
+import FilledButton from './FilledButton';
+import { useUid } from "@/context/UserContext"
 
 export default function Sidebar() {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
+    const { uid, setUid } = useUid()
 
     const navItems = [
         { href: '/', label: 'Home', icon: Home },
@@ -28,6 +32,11 @@ export default function Sidebar() {
     };
 
     const closeSidebar = () => setIsOpen(false);
+
+    async function logout() {
+        await fetch("/api/logout", { method: "POST" })
+        setUid(null)
+    }
 
     return (
         <>
@@ -102,6 +111,15 @@ export default function Sidebar() {
                         <User className="w-8 h-8" />
                         <span>Profil</span>
                     </Link>
+
+
+                    {uid ? <button
+                        onClick={logout}
+                        className={`flex items-center space-x-4 px-2 py-3 rounded hover:bg-gray-900 transition}`}
+                    >
+                        <LogOut className="w-8 h-8" />
+                        <span>Log Out</span>
+                    </button> : <FilledButton href='/login' className='mt-2 w-full'>Log In</FilledButton>}
                 </nav>
 
                 {/* Footer */}

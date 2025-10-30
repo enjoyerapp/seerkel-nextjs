@@ -1,24 +1,33 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, TrendingUp, Hash, Music, X, Play, Heart } from 'lucide-react';
+import { Search, TrendingUp, Hash, X, Play, Heart, ArrowLeft, HeartIcon } from 'lucide-react';
 import { Post } from '@/models/post';
-
-interface VideoResult {
-    id: number;
-    thumbnail: string;
-    username: string;
-    userAvatar: string;
-    description: string;
-    likes: string;
-    views: string;
-}
+import PostsView from '@/components/Postsview';
+import FilledButton from '@/components/FilledButton';
 
 export default function SearchPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
-    const [postsRef, setPostsRef] = useState<Post[]>([]);
+    const [postsRef, setPostsRef] = useState<Post[] | null>(null);
     const [trendSearches, setTrendSearches] = useState<string[]>([]);
+    const [showVideoView, setShowVideoView] = useState(false);
+    const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
+
+    const moods: Record<string, string[]> = {
+        "happy": ["ENTERTAINMENT", "FUN", "EMOTIONAL"],
+        "inspired": ["MOTIVATIONAL", "RELAXING", "HOPEFUL"],
+        "curious": ["STIMULATING", "CHALLENGING"],
+        "angry": ["ARTISTIC"],
+        "sad": ["EMOTIONAL"],
+        "bored": ["HOPEFUL", "WELL-BEING", "PARTICIPATIVE"],
+        "cheer_me_up": ["MOTIVATIONAL", "HOPEFUL", "WELL-BEING"],
+        "meet_people": ["PARTICIPATIVE", "FUN"],
+        "entertain_me": ["ENTERTAINMENT", "FUN", "ARTISTIC"],
+        "relax": ["RELAXING", "WELL-BEING"],
+        "have_fun": ["FUN", "ENTERTAINMENT"],
+        "vent_me": ["EMOTIONAL"],
+    };
 
     const popularHashtags = [
         '#fyp',
@@ -44,16 +53,61 @@ export default function SearchPage() {
 
     const handleClearSearch = () => {
         setSearchQuery('');
-        setPostsRef([])
+        setPostsRef(null)
+        setShowVideoView(false)
+    };
+
+    const handleVideoClick = (index: number) => {
+        setSelectedVideoIndex(index);
+        setShowVideoView(true);
+    };
+
+    const handleBackToGrid = () => {
+        setShowVideoView(false);
     };
 
     async function search(customQuery?: string) {
-        const query = customQuery ?? searchQuery.trim()
+        var query = customQuery ?? searchQuery.trim()
         if (query == "") return
-        const resFetch = await fetch("/api/posts", { method: "POST", body: JSON.stringify({ query: query, indexName: "prod_POSTS" }) });
+        var filters: string | undefined
+
+        const isHashtag = query.startsWith("#")
+        if (isHashtag) {
+            query = query.replace("#", "")
+        }
+
+        if (query.startsWith("mood:")) {
+            const mood = query.replace("mood:", "").toLowerCase().trim();
+            query = "";
+
+            const moodFilters = moods[mood];
+            if (moodFilters && moodFilters.length > 0) {
+                filters = moodFilters.map(f => `classification:${f}`).join(" OR ");
+            }            
+        }
+        const resFetch = await fetch("/api/posts", { method: "POST", body: JSON.stringify({ query: query, indexName: isHashtag ? "prod_POSTS_by_hashtags" : "prod_POSTS", filters: filters }) });
         const { posts } = await resFetch.json()
 
         setPostsRef(posts)
+        setShowVideoView(false)
+    }
+
+    // If showing video view, render PostsView component
+    if (showVideoView && postsRef && postsRef.length > 0) {
+        return (
+            <div className="w-full h-full bg-black relative">
+                {/* Back Button */}
+                <button
+                    onClick={handleBackToGrid}
+                    className="absolute top-4 left-4 z-50 bg-black/50 hover:bg-black/70 p-3 rounded-full transition-all duration-300 hover:scale-110"
+                >
+                    <ArrowLeft className="w-6 h-6 text-white" />
+                </button>
+
+                {/* PostsView with initial index */}
+                <PostsView posts={postsRef} initialIndex={selectedVideoIndex} />
+            </div>
+        );
     }
 
     return (
@@ -63,7 +117,6 @@ export default function SearchPage() {
                     {/* Search Header */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold mb-6">Search</h1>
-
                         {/* Search Input */}
                         <div className={`relative transition-all duration-300 ${isFocused ? 'scale-105' : ''}`}>
                             <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
@@ -95,7 +148,7 @@ export default function SearchPage() {
                     </div>
 
                     {/* Search Results or Trending Content */}
-                    {searchQuery ? (
+                    {postsRef ? (
                         <div className="space-y-6">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-semibold">Results for "{searchQuery}"</h2>
@@ -104,10 +157,11 @@ export default function SearchPage() {
 
                             {/* Responsive Grid - 3 columns on desktop, 2 on tablet, 1 on mobile */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-[12vw]">
-                                {postsRef.map((post) => (
+                                {postsRef.map((post, index) => (
                                     <div
                                         key={post.id}
                                         className="group cursor-pointer"
+                                        onClick={() => handleVideoClick(index)}
                                     >
                                         {/* Video Card */}
                                         <div className="relative rounded-lg overflow-hidden bg-gray-900">
@@ -187,7 +241,7 @@ export default function SearchPage() {
                                         >
                                             <div className="flex items-center space-x-3">
                                                 <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
-                                                    <Hash className="w-5 h-5 text-white" />
+                                                    <Search className="w-5 h-5 text-white" />
                                                 </div>
                                                 <div className="text-left">
                                                     <p className="font-medium group-hover:text-[#FBDF85] transition">{item}</p>
@@ -209,7 +263,10 @@ export default function SearchPage() {
                                     {popularHashtags.map((tag, index) => (
                                         <button
                                             key={index}
-                                            onClick={() => setSearchQuery(tag)}
+                                            onClick={() => {
+                                                setSearchQuery(tag)
+                                                search(tag)
+                                            }}
                                             className="px-4 py-2 bg-gray-900 hover:text-black hover:bg-[#FBDF85] rounded-full transition-all duration-300 transform hover:scale-105"
                                         >
                                             {tag}
@@ -221,26 +278,42 @@ export default function SearchPage() {
                             {/* Discover Categories */}
                             <div>
                                 <div className="flex items-center mb-4">
-                                    <Music className="w-6 h-6 text-[#FBDF85] mr-2" />
-                                    <h2 className="text-xl font-semibold">Categories</h2>
+                                    <HeartIcon className="w-6 h-6 text-[#FBDF85] mr-2" />
+                                    <h2 className="text-xl font-semibold">Feelings</h2>
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     {[
-                                        { name: 'Müzik', emoji: '🎵', color: 'from-purple-500 to-pink-500' },
-                                        { name: 'Dans', emoji: '💃', color: 'from-[#FBDF85] to-orange-500' },
-                                        { name: 'Komedi', emoji: '😂', color: 'from-yellow-500 to-[#FBDF85]' },
-                                        { name: 'Spor', emoji: '⚽', color: 'from-green-500 to-blue-500' },
-                                        { name: 'Yemek', emoji: '🍳', color: 'from-orange-500 to-[#FBDF85]' },
-                                        { name: 'Seyahat', emoji: '✈️', color: 'from-blue-500 to-purple-500' },
+                                        { name: 'Happy', emoji: '😊', url: "https://enjoyer.b-cdn.net/statics/moods/happy.webp" },
+                                        { name: 'Inspired', emoji: '✨', url: "https://enjoyer.b-cdn.net/statics/moods/inspired.webp" },
+                                        { name: 'Curious', emoji: '🤔', url: "https://enjoyer.b-cdn.net/statics/moods/curious.webp" },
+                                        { name: 'Angry', emoji: '😠', url: "https://enjoyer.b-cdn.net/statics/moods/angry.webp" },
+                                        { name: 'Sad', emoji: '😢', url: "https://enjoyer.b-cdn.net/statics/moods/sad.webp" },
+                                        { name: 'Bored', emoji: '🥱', url: "https://enjoyer.b-cdn.net/statics/moods/bored.webp" },
                                     ].map((category, index) => (
                                         <button
                                             key={index}
-                                            className={`relative overflow-hidden rounded-xl aspect-square bg-gradient-to-br ${category.color} p-6 hover:scale-105 transition-transform duration-300 group`}
+                                            onClick={() => {
+                                                setSearchQuery(category.name)
+                                                search(`mood:${category.name.toLocaleLowerCase()}`)
+                                            }}
+                                            className="relative overflow-hidden rounded-xl aspect-square bg-gradient-to-br p-6 hover:scale-105 transition-transform duration-300 group"
                                         >
-                                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition" />
-                                            <div className="relative h-full flex flex-col items-center justify-center space-y-2">
-                                                <span className="text-4xl">{category.emoji}</span>
-                                                <span className="text-white font-semibold text-lg">{category.name}</span>
+                                            {/* Background image */}
+                                            <img
+                                                src={category.url}
+                                                alt={category.name}
+                                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                            />
+
+                                            {/* Overlay */}
+                                            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition" />
+
+                                            {/* Content */}
+                                            <div className="relative h-full flex flex-col items-center justify-center space-y-2 text-center">
+                                                <span className="text-4xl drop-shadow-lg">{category.emoji}</span>
+                                                <span className="text-white font-semibold text-lg drop-shadow-md">
+                                                    {category.name}
+                                                </span>
                                             </div>
                                         </button>
                                     ))}

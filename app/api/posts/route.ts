@@ -3,16 +3,16 @@ import { Post } from "@/models/post";
 
 export const dynamic = 'force-static';
 
-
 export async function POST(request: Request) {
-    const { query, indexName } = await request.json()
+    const { query, indexName, filters } = await request.json()
     try {
         const { hits: postHits } = await algoliaClient.searchSingleIndex({
             indexName: indexName ?? "prod_POSTS_by_popularity",
             searchParams: {
                 hitsPerPage: 20,
                 attributesToRetrieve: ["id", "description", "location", "like_count", "comment_count", "save_count", "share_count", "user_id", "thumbnail_custom"],
-                query: query
+                query: query,
+                filters: filters,
             },
         })
 
