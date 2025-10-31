@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { Post } from '@/models/post';
 import HlsVideo from '@/components/HlsVideo';
+import { useUid } from "@/context/UserContext"
+import { toast } from "sonner"
 
 interface PostsViewProps {
     posts: Post[];
@@ -21,14 +23,13 @@ interface PostsViewProps {
 export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
     const [currentVideoIndex, setCurrentVideoIndex] = useState(initialIndex);
     const [isMuted, setIsMuted] = useState(true);
-    const [isLiked, setIsLiked] = useState(false);
-    const [isBookmarked, setIsBookmarked] = useState(false);
     const [isScrolling, setIsScrolling] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const touchStartY = useRef(0);
     const scrollAccumulator = useRef(0);
     const [postsState, setPostsState] = useState<Post[]>(posts);
+    const { uid } = useUid()
 
     // Update posts state when props change
     useEffect(() => {
@@ -147,6 +148,33 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
         }
     };
 
+    async function handleLike(post: Post) {
+        if (uid == null) {
+            toast.warning("Please login to leave a reaction")
+            return
+        }
+        setPostsState(prevPosts =>
+            prevPosts.map(postMap =>
+                postMap.id === post.id ? { ...postMap, myReaction: (post.myReaction ? null : "like_it"), like_count: (post.myReaction ? post.like_count-- : post.like_count++) } : postMap
+            )
+        )
+        const res = await fetch("/api/post/like", {
+            method: "POST",
+            body: JSON.stringify({ postId: post.id, reactionKey: "like_it", isLike: post.myReaction == null })
+        })
+        const json = await res.json()
+        console.log(json);
+
+
+        if (res.ok) return
+        setPostsState(prevPosts =>
+            prevPosts.map(postMap =>
+                postMap.id === post.id ? { ...postMap, myReaction: post.myReaction, like_count: (post.myReaction ? post.like_count-- : post.like_count++) } : postMap
+            )
+        )
+        toast.error("Error trying to leave reaction")
+    }
+
     if (postsState.length === 0) {
         return (
             <div className="flex h-full items-center justify-center text-white">
@@ -216,11 +244,11 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                             <div className="absolute right-4 bottom-20 flex flex-col items-center space-y-4 z-10 pb-20">
                                 <div className="flex flex-col items-center">
                                     <button
-                                        onClick={() => setIsLiked(!isLiked)}
-                                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 ${isLiked ? 'bg-red-500' : 'bg-gray-800/70 hover:bg-gray-700'
+                                        onClick={() => handleLike(post)}
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 ${post.myReaction ? 'bg-red-500' : 'bg-gray-800/70 hover:bg-gray-700'
                                             }`}
                                     >
-                                        <Heart className={`w-7 h-7 transition-all ${isLiked ? 'fill-white scale-110' : ''}`} />
+                                        <Heart className={`w-7 h-7 transition-all ${post.myReaction ? 'fill-white scale-110' : ''}`} />
                                     </button>
                                     <span className="text-xs mt-1 font-semibold">{post.like_count}</span>
                                 </div>
@@ -234,11 +262,11 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
 
                                 <div className="flex flex-col items-center">
                                     <button
-                                        onClick={() => setIsBookmarked(!isBookmarked)}
-                                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 ${isBookmarked ? 'bg-yellow-500' : 'bg-gray-800/70 hover:bg-gray-700'
+                                        onClick={() => { }}
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 ${post.isSaved ? 'bg-yellow-500' : 'bg-gray-800/70 hover:bg-gray-700'
                                             }`}
                                     >
-                                        <Bookmark className={`w-7 h-7 transition-all ${isBookmarked ? 'fill-white scale-110' : ''}`} />
+                                        <Bookmark className={`w-7 h-7 transition-all ${post.isSaved ? 'fill-white scale-110' : ''}`} />
                                     </button>
                                     <span className="text-xs mt-1 font-semibold">{post.save_count}</span>
                                 </div>

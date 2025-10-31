@@ -33,7 +33,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next()
 }
 
-// Optionally protect only certain routes
-export const config = {
-    matcher: ["/", "/search", "/profile"], // adjust as needed
-}
+// // Optionally protect only certain routes
+// export const config = {
+//     matcher: ["/", "/search", "/profile"], // adjust as needed
+// }

@@ -70,5 +70,7 @@ export interface Post {
     longitude: number | null;
     isMuted: boolean;
     isPlaying: boolean;
+    myReaction: string | null;
+    isSaved: boolean;
     user: User;
 }

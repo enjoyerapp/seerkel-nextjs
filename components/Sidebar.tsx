@@ -115,7 +115,7 @@ export default function Sidebar() {
 
                     {uid ? <button
                         onClick={logout}
-                        className={`flex items-center space-x-4 px-2 py-3 rounded hover:bg-gray-900 transition}`}
+                        className="cursor-pointer hover:cursor-pointer w-full flex items-center space-x-4 px-2 py-3 rounded hover:bg-gray-900 transition"
                     >
                         <LogOut className="w-8 h-8" />
                         <span>Log Out</span>

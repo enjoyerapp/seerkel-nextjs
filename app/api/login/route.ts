@@ -9,9 +9,12 @@ export async function POST(request: Request) {
     if (!googleCode) {
         return Response.json({ message: "Error" }, { status: 400 })
     }
-    
+
     const url = new URL(request.url);
-    const combined = `${url.protocol}//${url.hostname}`;
+    let combined = `${url.protocol}//${url.hostname}`;
+    if (combined.includes("localhost")) {
+        combined = combined.replace("localhost", "localhost:3000")
+    }
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -67,7 +70,7 @@ export async function POST(request: Request) {
     const res = NextResponse.json({ status: "success", uid: user.uid })
     res.cookies.set("token", token, {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         maxAge: 30 * 24 * 60 * 60,
         path: "/",
         sameSite: "strict",

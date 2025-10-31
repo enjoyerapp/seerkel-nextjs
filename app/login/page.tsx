@@ -8,7 +8,7 @@ import {
     EyeOff,
     X
 } from 'lucide-react';
-import { useSearchParams, redirect } from 'next/navigation'
+import {  redirect } from 'next/navigation'
 import { useUid } from "@/context/UserContext"
 
 export default function LoginPage() {
@@ -48,7 +48,11 @@ export default function LoginPage() {
     };
 
     const handleGoogleLogin = () => {
-        const combined = `${window.location.protocol}//${window.location.hostname}`;
+        let combined = `${window.location.protocol}//${window.location.hostname}`;
+        if (combined.includes("localhost")) {
+            combined = combined.replace("localhost","localhost:3000")
+        }
+        
         const params = new URLSearchParams({
             client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
             redirect_uri: `${combined}/login`,

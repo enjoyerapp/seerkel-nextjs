@@ -15,7 +15,7 @@ export default function Home() {
       try {
         const resFetch = await fetch("/api/posts", {
           method: "POST",
-          body: JSON.stringify({ "Sa": "AS" })
+          body: JSON.stringify({ "Sa": "AS", "indexName": "prod_POSTS_by_recency" }),
         });
         const { posts } = await resFetch.json();
         setPosts(posts);
