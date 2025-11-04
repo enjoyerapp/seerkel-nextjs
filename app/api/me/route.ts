@@ -4,12 +4,12 @@ import jwt from "jsonwebtoken"
 
 export async function GET(req: NextRequest) {
   const token = req.cookies.get("token")?.value
-  if (!token) return NextResponse.json({ uid: null })
+  if (!token) return NextResponse.json({ uid: null }, { status: 401 })
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { uid: string }
     return NextResponse.json({ uid: decoded.uid })
   } catch (e) {
-    return NextResponse.json({ uid: null })
+    return NextResponse.json({ uid: null }, { status: 401 })
   }
 }

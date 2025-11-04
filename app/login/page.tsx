@@ -8,15 +8,16 @@ import {
     EyeOff,
     X
 } from 'lucide-react';
-import {  redirect } from 'next/navigation'
-import { useUid } from "@/context/UserContext"
+import { redirect } from 'next/navigation'
+import { useUser } from "@/context/UserContext"
+import { User } from '@/models/user';
 
 export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showEmailForm, setShowEmailForm] = useState(false);
-    const { setUid } = useUid()
+    const { setUser } = useUser()
     const [hasCode, setHasCode] = useState<boolean | null>(null);
 
     useEffect(() => {
@@ -33,7 +34,7 @@ export default function LoginPage() {
                 body: JSON.stringify({ googleCode: code })
             })
             const { uid } = await res.json()
-            setUid(uid)
+            setUser({ id: uid } as User)
             if (res.ok) {
                 redirect("/")
             }
@@ -50,9 +51,9 @@ export default function LoginPage() {
     const handleGoogleLogin = () => {
         let combined = `${window.location.protocol}//${window.location.hostname}`;
         if (combined.includes("localhost")) {
-            combined = combined.replace("localhost","localhost:3000")
+            combined = combined.replace("localhost", "localhost:3000")
         }
-        
+
         const params = new URLSearchParams({
             client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
             redirect_uri: `${combined}/login`,

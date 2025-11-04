@@ -9,11 +9,15 @@ import {
     Volume2,
     VolumeX,
     LocateIcon,
+    X,
+    Send,
 } from 'lucide-react';
 import { Post } from '@/models/post';
 import HlsVideo from '@/components/HlsVideo';
-import { useUid } from "@/context/UserContext"
+import { useUser } from "@/context/UserContext"
 import { toast } from "sonner"
+import { Comment } from '@/models/comment';
+import { timeAgo } from '@/helpers/helpers';
 
 interface PostsViewProps {
     posts: Post[];
@@ -24,12 +28,15 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
     const [currentVideoIndex, setCurrentVideoIndex] = useState(initialIndex);
     const [isMuted, setIsMuted] = useState(true);
     const [isScrolling, setIsScrolling] = useState(false);
+    const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+    const [commentText, setCommentText] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const touchStartY = useRef(0);
     const scrollAccumulator = useRef(0);
     const [postsState, setPostsState] = useState<Post[]>(posts);
-    const { uid } = useUid()
+    const [postComments, setPostComments] = useState<Comment[] | null>(null);
+    const { user } = useUser()
 
     // Update posts state when props change
     useEffect(() => {
@@ -54,7 +61,10 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
             return { ...post, isPlaying: false };
         });
         setPostsState(newPosts);
+        setIsCommentsOpen(false);
+        setPostComments(null)
     }, [currentVideoIndex]);
+
 
     // Smooth scroll to video
     const scrollToVideo = (index: number) => {
@@ -140,6 +150,21 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
         setIsMuted(!isMuted);
     };
 
+    const toggleComments = async () => {
+        const isOpened = isCommentsOpen
+        setIsCommentsOpen(!isCommentsOpen);
+        if (!isOpened && postComments == null) {
+            const res = await fetch("/api/post/comments", {
+                method: "POST",
+                body: JSON.stringify({
+                    "postId": posts[currentVideoIndex].id
+                })
+            })
+            const { comments } = await res.json()
+            setPostComments(comments)
+        }
+    };
+
     const navigateToVideo = (index: number) => {
         if (!isScrolling && index >= 0 && index < postsState.length) {
             setIsScrolling(true);
@@ -149,7 +174,7 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
     };
 
     async function handleLike(post: Post) {
-        if (uid == null) {
+        if (user == null) {
             toast.warning("Please login to leave a reaction")
             return
         }
@@ -162,9 +187,6 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
             method: "POST",
             body: JSON.stringify({ postId: post.id, reactionKey: "like_it", isLike: post.myReaction == null })
         })
-        const json = await res.json()
-        console.log(json);
-
 
         if (res.ok) return
         setPostsState(prevPosts =>
@@ -175,6 +197,40 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
         toast.error("Error trying to leave reaction")
     }
 
+    const handleSubmitComment = async () => {
+        if (!user) {
+            toast.warning("Please login to comment");
+            return;
+        }
+        if (!commentText.trim()) return;
+        const text = commentText.trim()
+        setCommentText('');
+
+        setPostComments((e) => {
+            return [
+                ({
+                    created_at: (new Date()).toISOString(),
+                    is_liked: false,
+                    is_member: false,
+                    like_count: 0,
+                    reply_count: 0,
+                    text: text,
+                    uid: user.id,
+                    user: user,
+                } as Comment),
+                ...(e ?? [])
+            ]
+        })
+
+        await fetch("/api/post/comments", {
+            method: "PUT",
+            body: JSON.stringify({
+                postId: currentPost.id,
+                text: text,
+            })
+        })
+    };
+
     if (postsState.length === 0) {
         return (
             <div className="flex h-full items-center justify-center text-white">
@@ -182,6 +238,8 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
             </div>
         );
     }
+
+    const currentPost = postsState[currentVideoIndex];
 
     return (
         <div className="relative h-full w-full">
@@ -254,7 +312,10 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                                 </div>
 
                                 <div className="flex flex-col items-center">
-                                    <button className="w-12 h-12 bg-gray-800/70 rounded-full hover:bg-gray-700 flex items-center justify-center transition-all duration-300 transform hover:scale-110">
+                                    <button
+                                        onClick={toggleComments}
+                                        className="w-12 h-12 bg-gray-800/70 rounded-full hover:bg-gray-700 flex items-center justify-center transition-all duration-300 transform hover:scale-110"
+                                    >
                                         <MessageCircle className="w-7 h-7" />
                                     </button>
                                     <span className="text-xs mt-1 font-semibold">{post.comment_count}</span>
@@ -282,6 +343,91 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                     </div>
                 ))}
             </div>
+
+            {/* Comments Section - Sliding Panel */}
+            <div
+                className={`fixed top-0 right-0 h-full w-full md:w-[400px] bg-black/95 backdrop-blur-sm z-50 transform transition-transform duration-300 ease-in-out ${isCommentsOpen ? 'translate-x-0' : 'translate-x-full'
+                    }`}
+            >
+                {/* Comments Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                    <h2 className="text-lg font-bold">Comments</h2>
+                    <button
+                        onClick={toggleComments}
+                        className="p-2 hover:bg-gray-800 rounded-full transition"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Comments List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ height: 'calc(100% - 140px)' }}>
+                    {(postComments && postComments.length > 0) ? (
+                        postComments!.map((c) =>
+                            <div className="flex space-x-3">
+                                <div className="w-8 h-8 rounded-full bg-gray-700 flex-shrink-0 overflow-hidden">
+                                    <img src={c.user?.photo_url ?? ""} alt="user" className="w-full h-full" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="bg-gray-800 rounded-lg p-3">
+                                        <p className="font-semibold text-sm">{c.user?.username}</p>
+                                        <p className="text-sm mt-1">{c.text ?? ""}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-400">
+                                        <button className="hover:text-white">Like ({c.like_count ?? 0})</button>
+                                        <button className="hover:text-white">Reply ({c.reply_count ?? 0})</button>
+                                        {c.created_at && <span>{timeAgo(new Date(c.created_at!))}</span>}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                            <MessageCircle className="w-12 h-12 mb-2" />
+                            <p>No comments yet</p>
+                            <p className="text-sm">Be the first to comment!</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Comment Input */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-700 bg-black">
+                    <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 rounded-full bg-gray-700 flex-shrink-0 overflow-hidden">
+                            {user && user.photo_url && (
+                                <img src={user.photo_url} alt="you" className="w-full h-full" />
+                            )}
+                        </div>
+                        <input
+                            type="text"
+                            value={commentText}
+                            onChange={(e) => {
+                                if (e.target.value.length <= 250) {
+                                    setCommentText(e.target.value);
+                                }
+                            }}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSubmitComment()}
+                            placeholder="Add a comment..."
+                            className="flex-1 bg-gray-800 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                            onClick={handleSubmitComment}
+                            disabled={!commentText.trim()}
+                            className="p-2 bg-blue-500 rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            <Send className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Overlay backdrop when comments are open */}
+            {isCommentsOpen && (
+                <div
+                    onClick={toggleComments}
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                />
+            )}
 
             {/* Scroll Indicators - Arrow Navigation */}
             <div className="hidden md:flex md:absolute md:right-8 md:top-1/2 md:transform md:-translate-y-1/2 md:flex-col md:space-y-4 md:z-20">

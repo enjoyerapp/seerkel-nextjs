@@ -1,39 +1,41 @@
 // context/UserContext.tsx
 "use client"
 
+import { User } from "@/models/user"
 import { createContext, useContext, useEffect, useState } from "react"
 
 type UserContextType = {
-  uid: string | null
-  setUid: (uid: string | null) => void
+  user: User | null
+  setUser: (uid: User | null) => void
 }
 
 const UserContext = createContext<UserContextType>({
-  uid: null,
-  setUid: () => {},
+  user: null,
+  setUser: () => {},
 })
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [uid, setUid] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     async function fetchUser() {
       try {
-        const res = await fetch("/api/me")
+        const res = await fetch("/api/user")
         const data = await res.json()
-        setUid(data.uid)
+        
+        setUser(data.user)
       } catch {
-        setUid(null)
+        setUser(null)
       }
     }
     fetchUser()
   }, [])
 
   return (
-    <UserContext.Provider value={{ uid, setUid }}>
+    <UserContext.Provider value={{ user, setUser }}>
       {children}
     </UserContext.Provider>
   )
 }
 
-export const useUid = () => useContext(UserContext)
+export const useUser = () => useContext(UserContext)

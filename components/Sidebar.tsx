@@ -12,12 +12,12 @@ import {
     LogOut
 } from 'lucide-react';
 import FilledButton from './FilledButton';
-import { useUid } from "@/context/UserContext"
+import { useUser } from "@/context/UserContext"
 
 export default function Sidebar() {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
-    const { uid, setUid } = useUid()
+    const { user, setUser } = useUser()
 
     const navItems = [
         { href: '/', label: 'Home', icon: Home },
@@ -35,7 +35,7 @@ export default function Sidebar() {
 
     async function logout() {
         await fetch("/api/logout", { method: "POST" })
-        setUid(null)
+        setUser(null)
     }
 
     return (
@@ -113,7 +113,7 @@ export default function Sidebar() {
                     </Link>
 
 
-                    {uid ? <button
+                    {user ? <button
                         onClick={logout}
                         className="cursor-pointer hover:cursor-pointer w-full flex items-center space-x-4 px-2 py-3 rounded hover:bg-gray-900 transition"
                     >
