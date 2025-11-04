@@ -18,6 +18,7 @@ export default function Home() {
           body: JSON.stringify({ "Sa": "AS", "indexName": "prod_POSTS_by_popularity" }),
         });
         const { posts } = await resFetch.json();
+        
         setPosts(posts);
       } catch (error) {
         console.error('Failed to load posts:', error);

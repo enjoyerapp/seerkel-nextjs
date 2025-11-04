@@ -78,6 +78,9 @@ export async function PUT(req: NextRequest) {
         text: text.trim(),
         uid: uid,
         created_at: FieldValue.serverTimestamp(),
+        like_count: 0,
+        reply_count: 0,
+        id: commentRef.id,
     });
 
     batch.update(postRef, {
