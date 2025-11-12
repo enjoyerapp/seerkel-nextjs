@@ -197,6 +197,15 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
         toast.error("Error trying to leave reaction")
     }
 
+    async function handleCommentLike(isLike: boolean, index: number, commentId: string) {
+        setPostComments(prevComments => prevComments!.map((commentMap, indexMap) => indexMap == index ?
+            (!isLike ? { ...commentMap, myLikeId: null, like_count: (commentMap.like_count ?? 0) - 1 } : { ...commentMap, myLikeId: user!.id, like_count: (commentMap.like_count ?? 0) + 1 }) : commentMap))
+        await fetch("/api/post/comments/like", {
+            method: "POST",
+            body: JSON.stringify({ postId: posts[currentVideoIndex].id, commentId: commentId })
+        })
+    }
+
     const handleSubmitComment = async () => {
         if (!user) {
             toast.warning("Please login to comment");
@@ -363,7 +372,7 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                 {/* Comments List */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ height: 'calc(100% - 140px)' }}>
                     {(postComments && postComments.length > 0) ? (
-                        postComments!.map((c) =>
+                        postComments!.map((c, i) =>
                             <div className="flex space-x-3">
                                 <div className="w-8 h-8 rounded-full bg-gray-700 flex-shrink-0 overflow-hidden">
                                     <img src={c.user?.photo_url ?? ""} alt="user" className="w-full h-full" />
@@ -374,7 +383,10 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                                         <p className="text-sm mt-1">{c.text ?? ""}</p>
                                     </div>
                                     <div className="flex items-center space-x-4 mt-2 text-xs text-gray-400">
-                                        <button className="hover:text-white">Like ({c.like_count ?? 0})</button>
+                                        <button onClick={() => handleCommentLike(c.myLikeId == null, i, c.id!)} className='flex items-center space-x-1 cursor-pointer hover:text-white'>
+                                            <Heart className={`w-3 h-3 transition-all text-red-500 ${c.myLikeId ? 'fill-red-500 scale-110' : ''}`} />
+                                            <p>Like ({c.like_count ?? 0})</p>
+                                        </button>
                                         <button className="hover:text-white">Reply ({c.reply_count ?? 0})</button>
                                         {c.created_at && <span>{timeAgo(new Date(c.created_at!))}</span>}
                                     </div>

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
         const postReactions: Record<string, string | null> = {};
 
-        if (userId) {
+        if (userId && postIds.length > 0) {
             const res = await db.getAll(...postIds.map((e) => db.collection("posts").doc(e).collection("likes").doc(userId)))
             res.forEach((e, i) => {
                 if (e.exists) {

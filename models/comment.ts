@@ -11,4 +11,5 @@ export interface Comment {
     is_liked?: boolean;
     is_member?: boolean;
     replies?: Comment[];
+    myLikeId: string | null;
 }

@@ -9,6 +9,18 @@ import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(req: NextRequest) {
     const { postId } = await req.json()
+    let userId: string | null = null
+
+    const token = req.cookies.get("token")?.value
+
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { uid: string }
+            userId = decoded.uid
+        } catch (e) {
+            console.log(e);
+        }
+    }
 
     const resComments = await db.collection("posts").doc(postId).collection("comments").orderBy("created_at", "desc").limit(20).get()
 
@@ -19,6 +31,8 @@ export async function POST(req: NextRequest) {
             created_at: e.data().created_at?.toDate().toISOString()
         }
     })
+
+    const commentIds = comments.map((e) => e.id).filter((e) => e);
 
     const userIds = comments.map((e) => e.uid!)
 
@@ -43,9 +57,25 @@ export async function POST(req: NextRequest) {
         } as User;
     });
 
+    const commentLikeIds: Record<string, string | null> = {};
+
+    if (userId && commentIds.length > 0) {
+        const res = await db.getAll(...commentIds.map((e) => {
+            return db.collection("posts").doc(postId).collection("comments").doc(e!).collection("likes").doc(userId);
+        }))
+        res.forEach((e, i) => {
+            if (e.exists) {
+                commentLikeIds[commentIds[i]!] = e.id
+            } else {
+                commentLikeIds[e.id] = null
+            }
+        })
+    }
+
     for (let index = 0; index < comments.length; index++) {
         const element = comments[index];
         element.user = users[element.uid!]
+        element.myLikeId = commentLikeIds[element.id!]
     }
 
     return Response.json({ comments })
