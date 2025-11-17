@@ -301,10 +301,10 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                                     <span className="font-bold">{post.user.username}</span>
                                 </div>
                                 <p className="text-sm mb-2">{post.description}</p>
-                                <div className="flex items-center text-sm">
+                                {post.location && <div className="flex items-center text-sm">
                                     <LocateIcon className="w-4 h-4 mr-1" />
                                     <span className="mr-4">{post.location.formattedAddress}</span>
-                                </div>
+                                </div>}
                             </div>
 
                             {/* Action Buttons */}
@@ -342,17 +342,25 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                                 </div>
 
                                 <div className="flex flex-col items-center">
-                                    <button className="w-12 h-12 bg-gray-800/70 rounded-full hover:bg-gray-700 flex items-center justify-center transition-all duration-300 transform hover:scale-110">
+                                    <button className="w-12 h-12 bg-gray-800/70 rounded-full hover:bg-gray-700 flex items-center justify-center transition-all duration-300 transform hover:scale-110"
+                                        onClick={() => { 
+                                            const url = window.location;
+                                            let combined = `${url.protocol}//${url.hostname}`;
+                                            if (combined.includes("localhost")) {
+                                                combined = combined.replace("localhost", "localhost:3000")
+                                            }
+                                            navigator.clipboard.writeText(`Meet people, meet fun with Seerkel\n\n${combined}?id=${post.id}`);
+                                            toast.success("Link copied!")
+                                        }}>
                                         <Share2 className="w-7 h-7" />
                                     </button>
-                                    <span className="text-xs mt-1 font-semibold">{post.share_count}</span>
+                                    {/* <span className="text-xs mt-1 font-semibold">{post.share_count}</span> */}
                                 </div>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
-
             {/* Comments Section - Sliding Panel */}
             <div
                 className={`fixed top-0 right-0 h-full w-full md:w-[400px] bg-black/95 backdrop-blur-sm z-50 transform transition-transform duration-300 ease-in-out ${isCommentsOpen ? 'translate-x-0' : 'translate-x-full'

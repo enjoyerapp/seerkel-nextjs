@@ -48,6 +48,7 @@ export interface Post {
     profile_list_id: string | null;
     contentType: number;
     list_id_for_notify: string | null;
+    created_at_unix: string | null;
     language: string;
     list_name_for_notify: string | null;
     description: string;
