@@ -34,6 +34,7 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const touchStartY = useRef(0);
     const scrollAccumulator = useRef(0);
+    const [lastPlayedVideoDetails, setLastPlayedVideoDetails] = useState<{ postId: string; percentage: number } | null>(null);
     const [postsState, setPostsState] = useState<Post[]>(posts);
     const [postComments, setPostComments] = useState<Comment[] | null>(null);
     const { user } = useUser()
@@ -63,6 +64,11 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
         setPostsState(newPosts);
         setIsCommentsOpen(false);
         setPostComments(null)
+
+        const videoPlayDetails = lastPlayedVideoDetails
+        setLastPlayedVideoDetails(null)
+        
+        
     }, [currentVideoIndex]);
 
 
@@ -282,6 +288,9 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                                 loop
                                 muted={isMuted}
                                 isPlaying={post.isPlaying}
+                                onWatch={(e) => {
+                                    setLastPlayedVideoDetails({ postId: post.id, percentage: e })
+                                }}
                             />
 
                             {/* Mute/Unmute Button */}
@@ -343,7 +352,7 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
 
                                 <div className="flex flex-col items-center">
                                     <button className="w-12 h-12 bg-gray-800/70 rounded-full hover:bg-gray-700 flex items-center justify-center transition-all duration-300 transform hover:scale-110"
-                                        onClick={() => { 
+                                        onClick={() => {
                                             const url = window.location;
                                             let combined = `${url.protocol}//${url.hostname}`;
                                             if (combined.includes("localhost")) {

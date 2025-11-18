@@ -26,21 +26,34 @@ export async function POST(req: NextRequest) {
     let latLng: string | undefined
 
     if (isHome && userId) {
-
         const resSecret = await db.collection("userSecrets").doc(userId).get()
         const resSecretData = resSecret.data()
+        var watchedPostIds: string[] = []
+
+        try {
+            const resWatchedPosts = await algoliaClient.getObject({ indexName: "prod_WATCHED_POSTS", objectID: userId })
+            watchedPostIds = (resWatchedPosts["watchedPostIds"] as string[] | undefined | null) ?? []
+        } catch (error) {
+            console.log(error);
+        }
 
         if (resSecretData?.show_followed_content_in_feed ?? false) {
             const f =
                 resSecretData!.followees.map((e: any) => `user_id:${e}`).join(" OR ");
 
-            const customFilters = []
-            if (f.includes("OR")) {
-                customFilters.push(`(${f})`);
-            } else {
-                customFilters.push(f);
+            var customFilters = []
+            if (f) {
+                if (f.includes("OR")) {
+                    customFilters.push(`(${f})`);
+                } else {
+                    customFilters.push(f);
+                }
             }
-            
+
+            if (watchedPostIds.length > 0) {
+                customFilters = [...customFilters, ...(watchedPostIds.map((e) => `NOT objectID:${e}`))]
+            }
+
             const newPosts = await fetchPosts({
                 indexName: "prod_POSTS_by_recency",
                 query: undefined,
@@ -56,7 +69,66 @@ export async function POST(req: NextRequest) {
             for (let index = 0; index < orderList.length; index++) {
                 const element = orderList[index];
 
-                if (element == 3) {
+                if (element == 1 && postHits.length < 20) {
+                    const f =
+                        resSecretData!.followees?.map((e: any) => `user_id:${e}`).join(" OR ");
+                    if (f == undefined || f == null) continue;
+                    var customFilters = []
+                    if (f.includes("OR")) {
+                        customFilters.push(`(${f})`);
+                    } else {
+                        customFilters.push(f);
+                    }
+
+                    if (watchedPostIds.length > 0) {
+                        customFilters = [...customFilters, ...(watchedPostIds.map((e) => `NOT objectID:${e}`))]
+                    }
+
+                    const newPosts = await fetchPosts({
+                        indexName: "prod_POSTS_by_recency",
+                        query: undefined,
+                        filters: customFilters.join(" AND "),
+                        aroundLatLng: undefined,
+                    })
+                    postHits = [...newPosts, ...postHits]
+                }
+                else if (element == 2 && postHits.length < 20) {
+                    const resUser = await db.collection("users").doc(userId).get()
+                    const resUserdata = resUser.data()
+                    const userSearches = resUserdata?.last_searches as string[] | undefined | null
+                    const searchesWithoutUsers = userSearches?.filter((e) => !e.startsWith("@"))
+                    const userLocation = resUserdata?.location;
+
+                    if (searchesWithoutUsers && searchesWithoutUsers!.length > 0) {
+                        const newPosts = await fetchPosts({
+                            indexName: "prod_POSTS_by_recency",
+                            query: searchesWithoutUsers[0],
+                            filters: watchedPostIds.map((e) => `NOT objectID:${e}`).join(" AND "),
+                            aroundLatLng: undefined,
+                        })
+                        postHits = [...newPosts, ...postHits]
+
+                        if (searchesWithoutUsers.length > 1) {
+                            const newPosts = await fetchPosts({
+                                indexName: "prod_POSTS_by_recency",
+                                query: searchesWithoutUsers[1],
+                                filters: undefined,
+                                aroundLatLng: undefined,
+                            })
+                            postHits = [...newPosts, ...postHits]
+                        }
+                    } else if (userLocation) {
+                        latLng = `${userLocation.latitude},${userLocation.longitude}`
+                        const newPosts = await fetchPosts({
+                            indexName: "prod_POSTS_by_recency",
+                            query: undefined,
+                            filters: watchedPostIds.map((e) => `NOT objectID:${e}`).join(" AND "),
+                            aroundLatLng: latLng,
+                        })
+                        postHits = [...newPosts, ...postHits]
+                    }
+                }
+                else if ((element == 3 || element == 4) && postHits.length < 20) {
                     const resUser = await db.collection("users").doc(userId).get()
                     const resUserdata = resUser.data()
                     const userLocation = resUserdata?.location;
@@ -66,11 +138,34 @@ export async function POST(req: NextRequest) {
                         const newPosts = await fetchPosts({
                             indexName: "prod_POSTS_by_recency",
                             query: undefined,
-                            filters: undefined,
+                            filters: watchedPostIds.map((e) => `NOT objectID:${e}`).join(" AND "),
                             aroundLatLng: latLng,
+                            aroundRadius: 20000,
                         })
                         postHits = [...newPosts, ...postHits]
                     }
+                } else if (element == 6 && postHits.length < 20) {
+                    const f =
+                        resSecretData!.favorite_users?.map((e: any) => `user_id:${e}`).join(" OR ");
+                    if (f == undefined || f == null) continue;
+                    var customFilters = []
+                    if (f.includes("OR")) {
+                        customFilters.push(`(${f})`);
+                    } else {
+                        customFilters.push(f);
+                    }
+
+                    if (watchedPostIds.length > 0) {
+                        customFilters = [...customFilters, ...(watchedPostIds.map((e) => `NOT objectID:${e}`))]
+                    }
+
+                    const newPosts = await fetchPosts({
+                        indexName: "prod_POSTS_by_recency",
+                        query: undefined,
+                        filters: customFilters.join(" AND "),
+                        aroundLatLng: undefined,
+                    })
+                    postHits = [...newPosts, ...postHits]
                 }
             }
         }
@@ -85,6 +180,10 @@ export async function POST(req: NextRequest) {
                 aroundLatLng: latLng,
             })
         }
+
+        postHits = Array.from(
+            new Map(postHits.map(post => [post.id, post])).values()
+        );
 
         if (postId) {
             const res = await db.collection("posts").doc(postId).get()
@@ -152,7 +251,8 @@ interface FetchPostInterface {
     indexName: string;
     query: string | undefined;
     filters: string | undefined;
-    aroundLatLng: string | undefined;
+    aroundLatLng?: string | undefined;
+    aroundRadius?: number | undefined;
 }
 
 async function fetchPosts(val: FetchPostInterface) {
@@ -163,8 +263,8 @@ async function fetchPosts(val: FetchPostInterface) {
             attributesToRetrieve: ["id", "description", "location", "like_count", "comment_count", "save_count", "share_count", "user_id", "thumbnail_custom"],
             query: val.query,
             filters: val.filters,
-            aroundLatLng: val.aroundLatLng,
-            aroundRadius: 6000
+            aroundLatLng: val.aroundLatLng ?? undefined,
+            aroundRadius: val.aroundRadius ?? 6000
         },
     })
 

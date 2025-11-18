@@ -21,7 +21,7 @@ export default function Home() {
         });
         const { posts } = await resFetch.json();
         
-        setPosts(posts);
+        setPosts((e) => [...e, ...posts]);
       } catch (error) {
         console.error('Failed to load posts:', error);
       } finally {
