@@ -6,12 +6,12 @@ import jwt from "jsonwebtoken"
 import { shuffleArray } from "@/helpers/helpers";
 
 export async function POST(req: NextRequest) {
-    const { query, indexName, filters, postId, isHome } = await req.json()
-    let userId: string | null = null
+    const { query, indexName, filters, postId, isHome, customId } = await req.json()
+    let userId: string | null = customId
 
     const token = req.cookies.get("token")?.value
 
-    if (token) {
+    if (token && !customId) {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { uid: string }
             userId = decoded.uid
@@ -173,10 +173,15 @@ export async function POST(req: NextRequest) {
 
     try {
         if (!isHomeFeed) {
+            var f: string[] = []
+            if (customId) {
+                f.push(`user_id:${customId}`)
+            }
+
             postHits = await fetchPosts({
                 indexName: indexName ?? "prod_POSTS_by_popularity",
                 query: query,
-                filters: filters,
+                filters: filters ?? f.join(" AND "),
                 aroundLatLng: latLng,
             })
         }

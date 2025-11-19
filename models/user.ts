@@ -69,4 +69,5 @@ export interface User {
     is_second_layout: boolean;
     private_account: boolean;
     member_count: number | null;
+    isOwnProfile: boolean | undefined;
 }

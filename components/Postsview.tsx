@@ -34,7 +34,7 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const touchStartY = useRef(0);
     const scrollAccumulator = useRef(0);
-    const [lastPlayedVideoDetails, setLastPlayedVideoDetails] = useState<{ postId: string; percentage: number } | null>(null);
+    const [lastPlayedVideoDetails, setLastPlayedVideoDetails] = useState<{ postId: string; percentage: number, playDuration: number } | null>(null);
     const [postsState, setPostsState] = useState<Post[]>(posts);
     const [postComments, setPostComments] = useState<Comment[] | null>(null);
     const { user } = useUser()
@@ -65,12 +65,21 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
         setIsCommentsOpen(false);
         setPostComments(null)
 
-        const videoPlayDetails = lastPlayedVideoDetails
-        setLastPlayedVideoDetails(null)
-        
-        
+        handleCheckWatch()
+
     }, [currentVideoIndex]);
 
+    function handleCheckWatch(customDetails?: { postId: string; percentage: number, playDuration: number }) {
+        const videoPlayDetails = customDetails ?? lastPlayedVideoDetails
+        setLastPlayedVideoDetails(null)
+        
+        if (videoPlayDetails) {
+            fetch("/api/post/watch", {
+                method: "POST",
+                body: JSON.stringify({ "postId": videoPlayDetails.postId, "watchPercentage": videoPlayDetails.percentage, "watchTime": videoPlayDetails.playDuration }),
+            });
+        }
+    }
 
     // Smooth scroll to video
     const scrollToVideo = (index: number) => {
@@ -288,8 +297,12 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
                                 loop
                                 muted={isMuted}
                                 isPlaying={post.isPlaying}
-                                onWatch={(e) => {
-                                    setLastPlayedVideoDetails({ postId: post.id, percentage: e })
+                                onWatch={(e, p) => {
+                                    if (p == 90) {
+                                        handleCheckWatch({ postId: post.id, percentage: p, playDuration: e })
+                                    } else {
+                                        setLastPlayedVideoDetails({ postId: post.id, percentage: p, playDuration: e })
+                                    }
                                 }}
                             />
 
