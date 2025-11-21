@@ -18,6 +18,7 @@ import { useUser } from "@/context/UserContext"
 import { toast } from "sonner"
 import { Comment } from '@/models/comment';
 import { timeAgo } from '@/helpers/helpers';
+import Link from 'next/link';
 
 interface PostsViewProps {
     posts: Post[];
@@ -72,7 +73,7 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
     function handleCheckWatch(customDetails?: { postId: string; percentage: number, playDuration: number }) {
         const videoPlayDetails = customDetails ?? lastPlayedVideoDetails
         setLastPlayedVideoDetails(null)
-        
+
         if (videoPlayDetails) {
             fetch("/api/post/watch", {
                 method: "POST",
@@ -316,12 +317,12 @@ export default function PostsView({ posts, initialIndex = 0 }: PostsViewProps) {
 
                             {/* Video Info Overlay */}
                             <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent z-10">
-                                <div className="flex items-center mb-2">
+                                <Link href={`/profile?username=${post.user.username}`} className="flex items-center mb-2 hover:opacity-80 transition">
                                     <div className="w-10 h-10 rounded-full bg-gray-700 mr-2 overflow-hidden">
                                         <img src={post.user.photo_url ?? ""} alt="avatar" className="w-full h-full" />
                                     </div>
                                     <span className="font-bold">{post.user.username}</span>
-                                </div>
+                                </Link>
                                 <p className="text-sm mb-2">{post.description}</p>
                                 {post.location && <div className="flex items-center text-sm">
                                     <LocateIcon className="w-4 h-4 mr-1" />

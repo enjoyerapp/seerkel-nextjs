@@ -4,20 +4,18 @@ import { useState, useEffect } from 'react';
 import { Post } from '@/models/post';
 import PostsView from '@/components/Postsview';
 import DownloadAppButton from '@/components/DownloadAppButton';
-import { useSearchParams } from 'next/navigation';
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const searchParams = useSearchParams()
-  const postId = searchParams.get('id')
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
     async function loadPosts() {
       try {
         const resFetch = await fetch("/api/posts", {
           method: "POST",
-          body: JSON.stringify({ "postId": postId, "isHome": true }),
+          body: JSON.stringify({ "postId": params.get('id'), "isHome": true }),
         });
         const { posts } = await resFetch.json();
         

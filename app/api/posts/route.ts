@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken"
 import { shuffleArray } from "@/helpers/helpers";
 
 export async function POST(req: NextRequest) {
-    const { query, indexName, filters, postId, isHome, customId } = await req.json()
+    const { query, indexName, filters, postId, isHome, customId, createdAfter } = await req.json()
     let userId: string | null = customId
 
     const token = req.cookies.get("token")?.value
@@ -183,6 +183,7 @@ export async function POST(req: NextRequest) {
                 query: query,
                 filters: filters ?? f.join(" AND "),
                 aroundLatLng: latLng,
+                numericFilters: createdAfter ? `created_at_unix < ${createdAfter}` : ""
             })
         }
 
@@ -256,18 +257,20 @@ interface FetchPostInterface {
     indexName: string;
     query: string | undefined;
     filters: string | undefined;
+    numericFilters?: string | undefined;
     aroundLatLng?: string | undefined;
     aroundRadius?: number | undefined;
 }
 
-async function fetchPosts(val: FetchPostInterface) {
+async function fetchPosts(val: FetchPostInterface) {    
     let { hits: postHits } = await algoliaClient.searchSingleIndex({
         indexName: val.indexName,
         searchParams: {
             hitsPerPage: 20,
-            attributesToRetrieve: ["id", "description", "location", "like_count", "comment_count", "save_count", "share_count", "user_id", "thumbnail_custom"],
+            attributesToRetrieve: ["id", "description", "location", "like_count", "comment_count", "save_count", "share_count", "user_id", "thumbnail_custom","created_at_unix","created_at"],
             query: val.query,
             filters: val.filters,
+            numericFilters: val.numericFilters,
             aroundLatLng: val.aroundLatLng ?? undefined,
             aroundRadius: val.aroundRadius ?? 6000
         },

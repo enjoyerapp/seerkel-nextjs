@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Settings, Grid, Video, Bookmark, Heart, MessageCircle, Share2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Grid, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { User } from '@/models/user';
-import { useSearchParams } from 'next/navigation';
 import FilledButton from '@/components/FilledButton';
 import { Post } from '@/models/post';
 import { toast } from 'sonner';
@@ -13,32 +12,63 @@ export default function ProfilePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
     const [posts, setPosts] = useState<Post[]>([]);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-    const searchParams = useSearchParams()
-    const username = searchParams.get('username')
+    async function load(createdAfter?: string) {
+        if (isLoadingMore) return;
+        setIsLoadingMore(true);
+
+        const params = new URLSearchParams(window.location.search);
+        const username = params.get('username')
+        const res = await fetch(username ? `/api/user?u=${username}` : "/api/user")
+        if (!res.ok) {
+            return
+        }
+        const data = await res.json()
+        setUser(data.user)
+        setIsLoading(false)
+
+        const resFetch = await fetch("/api/posts", { method: "POST", body: JSON.stringify({ indexName: "prod_POSTS_by_recency", isHome: false, customId: data.user!.id!, createdAfter: createdAfter }) });
+        const { posts } = await resFetch.json()
+
+        setPosts((e) => [...e, ...posts])
+        setIsLoadingMore(false);
+        setHasMore(posts.length > 0)
+    }
 
     useEffect(() => {
-        async function load() {
-            const res = await fetch(username ? `/api/user?u=${username}` : "/api/user")
-            if (!res.ok) {
-                return
+        const scrollElement = scrollRef.current;
+        if (!scrollElement) return;
+
+        const handleScroll = () => {            
+            if (isLoadingMore || !hasMore) return;
+
+            const scrollTop = scrollElement.scrollTop;
+            const scrollHeight = scrollElement.scrollHeight;
+            const clientHeight = scrollElement.clientHeight;
+
+            // Load more when user is 200px from bottom
+            if (scrollTop + clientHeight >= scrollHeight - 200) {
+                const lastPost = posts[posts.length - 1];
+                if (lastPost) {
+                    console.log('Loading more posts...');
+                    load(lastPost.created_at_unix!);
+                }
             }
-            const data = await res.json()
-            setUser(data.user)
-            setIsLoading(false)
+        };
 
-            const resFetch = await fetch("/api/posts", { method: "POST", body: JSON.stringify({ indexName: "prod_POSTS_by_recency", isHome: false, customId: data.user!.id! }) });
-            const { posts } = await resFetch.json()
-            console.log(posts);
+        scrollElement.addEventListener('scroll', handleScroll);
+        return () => scrollElement.removeEventListener('scroll', handleScroll);
+    }, [isLoadingMore, hasMore, posts]);
 
-            setPosts(posts)
-        }
-
+    useEffect(() => {
         load()
     }, [])
 
     return (
-        <div className="w-full h-full overflow-y-auto bg-black text-white">
+        <div ref={scrollRef} className="w-full h-full overflow-y-auto bg-black text-white">
             {isLoading ? (
                 <div className="flex h-full items-center justify-center">
                     <div className="text-center">
